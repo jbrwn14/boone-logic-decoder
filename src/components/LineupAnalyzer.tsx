@@ -7,6 +7,7 @@ import { LineupCard } from "./LineupCard";
 import { BooneReasoning } from "./BooneReasoning";
 import { RefreshCw, Calendar, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Player {
   name: string;
@@ -99,17 +100,56 @@ export const LineupAnalyzer = () => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [gameDate, setGameDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoading, setIsLoading] = useState(false);
+  const [lineup, setLineup] = useState<Player[]>(mockLineup);
+  const [opponent, setOpponent] = useState("TBD");
   const { toast } = useToast();
 
   const handleAnalyzeLineup = async () => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    toast({
-      title: "Lineup Analysis Complete",
-      description: "Found today's questionable decisions by Boone",
-    });
+    try {
+      // Call Supabase Edge Function to fetch real ESPN data
+      const { data, error } = await supabase.functions.invoke('fetch-yankees-data', {
+        body: { gameDate }
+      });
+
+      if (error) throw error;
+
+      if (data.lineup && data.lineup.length > 0) {
+        // Transform ESPN data to match our interface
+        const transformedLineup = data.lineup.map((player: any) => ({
+          ...player,
+          stats: {
+            avg: player.stats.avg,
+            hr: parseInt(player.stats.hr) || 0,
+            rbi: parseInt(player.stats.rbi) || 0,
+            ops: "0.000" // ESPN doesn't always provide OPS
+          }
+        }));
+        
+        setLineup(transformedLineup);
+        setOpponent(data.gameData?.shortName?.includes('vs') ? 
+          data.gameData.shortName.split('vs')[1].trim() : "TBD");
+        
+        toast({
+          title: "Real Lineup Loaded!",
+          description: `Found Yankees lineup with ${transformedLineup.length} players`,
+        });
+      } else {
+        toast({
+          title: "No game today",
+          description: "Using mock lineup for demonstration",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching lineup:', error);
+      toast({
+        title: "Error loading lineup",
+        description: "Using mock data instead",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePlayerClick = (player: Player) => {
@@ -161,20 +201,20 @@ export const LineupAnalyzer = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               Today's Starting Lineup
-              <Badge variant="secondary">vs. Red Sox</Badge>
+              <Badge variant="secondary">vs. {opponent}</Badge>
             </CardTitle>
-            <Badge variant="outline" className="text-xs">
-              Mock Data - Real integration coming soon
+            <Badge variant={lineup === mockLineup ? "outline" : "default"} className="text-xs">
+              {lineup === mockLineup ? "Mock Data" : "Live ESPN Data"}
             </Badge>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {mockLineup.map((player) => (
+            {lineup.map((player) => (
               <LineupCard
                 key={player.name}
                 player={player}
-                booneReasoning={booneReasoningMap[player.name]}
+                booneReasoning={booneReasoningMap[player.name] || "Classic Boone move - your guess is as good as mine!"}
                 onShowReasoning={() => handlePlayerClick(player)}
               />
             ))}
