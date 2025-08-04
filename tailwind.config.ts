@@ -52,6 +52,11 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				yankees: {
+					navy: 'hsl(var(--yankees-navy))',
+					silver: 'hsl(var(--yankees-silver))',
+					white: 'hsl(var(--yankees-white))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
@@ -67,6 +72,10 @@ export default {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)'
+			},
+			backgroundImage: {
+				'pinstripe': 'var(--gradient-pinstripe)',
+				'hero-gradient': 'var(--gradient-hero)'
 			},
 			keyframes: {
 				'accordion-down': {
